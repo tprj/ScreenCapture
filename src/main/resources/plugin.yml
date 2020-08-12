@@ -1,0 +1,4 @@
+name: ScreenCapture
+version: @version@
+main: xyz.tprj.screencapture.ScreenCapture
+api-version: 1.15
