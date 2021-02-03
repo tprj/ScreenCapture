@@ -1,8 +1,11 @@
 package xyz.tprj.screencapture;
 
+import net.minecraft.server.v1_16_R3.PacketPlayOutWorldParticles;
+import net.minecraft.server.v1_16_R3.ParticleParamRedstone;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.craftbukkit.v1_16_R3.entity.CraftPlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -25,6 +28,7 @@ public final class ScreenCapture extends JavaPlugin implements Listener {
     private CaptureTask captureTask;
     private QueueTask queueTask;
     private DrawingTask drawingTask;
+    private CraftPlayer player = null;
 
     @Override
     public void onEnable() {
@@ -38,18 +42,23 @@ public final class ScreenCapture extends JavaPlugin implements Listener {
         if (event.getMessage().startsWith("loc")) {
             loc = event.getPlayer().getLocation();
         } else if (event.getMessage().startsWith("start") && allStop) {
+            player = (CraftPlayer) event.getPlayer();
             allStop = false;
             captureTask = new CaptureTask();
-            captureTask.runTaskTimer(this, 50, 2);
+            captureTask.runTaskTimer(this, 10, 2);
             queueTask = new QueueTask();
-            queueTask.runTaskTimer(this, 50, 1);
+            queueTask.runTaskTimer(this, 10, 1);
             drawingTask = new DrawingTask();
-            drawingTask.runTaskTimer(this, 50, 1);
-            for (int i = 0; i < 8; i++) {
+            drawingTask.runTaskTimer(this, 10, 1);
+            Bukkit.getScheduler().runTaskTimer(this,() -> {
+                DrawTask dt1 = new DrawTask();
+                dt1.runTask(this);
+            },10,1);
+            /*for (int i = 0; i < 5; i++) {
                 DrawTask dt = new DrawTask();
-                dt.runTaskTimer(this, 0, 1);
+                dt.runTaskTimerAsynchronously(this, 0, 1);
                 drawTaskList.add(dt);
-            }
+            }*/
 
         } else if (event.getMessage().startsWith("stop")) {
             allStop = true;
@@ -99,9 +108,9 @@ public final class ScreenCapture extends JavaPlugin implements Listener {
             int height = bi.getHeight();
             int width = bi.getWidth();
             ArrayList<ArrayList<java.awt.Color>> arrayArraysDusts = new ArrayList<>();
-            for (int i = 0; i < height; i += 22) {
+            for (int i = 0; i < height; i += 25) {
                 ArrayList<java.awt.Color> dusts = new ArrayList<>();
-                for (int j = 0; j < width; j += 22) {
+                for (int j = 0; j < width; j += 25) {
                     java.awt.Color c = new java.awt.Color(bi.getRGB(j, i));
                     dusts.add(c);
                 }
@@ -141,26 +150,22 @@ public final class ScreenCapture extends JavaPlugin implements Listener {
 
     public class DrawTask extends BukkitRunnable {
 
-        public synchronized void show() {
-            for (int i = 0; i < 700; i++) {
-                DrawObject q = drawQueue.poll();
-                if (q != null) {
-                    loc.getWorld().spawnParticle(Particle.REDSTONE, q.getLocation(), 1, q.getDust());
-                }
-            }
-        }
-
         @Override
         public void run() {
-                show();
-                if (drawQueue.isEmpty()) {
-                    System.out.println("Queue empty");
-                } else {
-                    System.out.println(drawQueue.size());
+
+            /*if (drawQueue.isEmpty()) {
+                System.out.println("Queue empty");
+            } else {
+                System.out.println(drawQueue.size());
+            }*/
+            for (int i = 0; i < 4000; i++) {
+                DrawObject q = drawQueue.poll();
+                if (q != null) {
+                    player.spawnParticle(Particle.REDSTONE,q.getLocation(),1,q.getDust());
+                    //player.getHandle().playerConnection.sendPacket(new PacketPlayOutWorldParticles(q.getDust(), false, q.getLocation().getX(), q.getLocation().getY(), q.getLocation().getZ(), 0, 0, 0, 0, 1));
                 }
-            if (allStop) {
-                //cancel();
             }
+            cancel();
         }
     }
 
@@ -178,11 +183,12 @@ public final class ScreenCapture extends JavaPlugin implements Listener {
         }
 
         public Particle.DustOptions getDust() {
-            return new Particle.DustOptions(org.bukkit.Color.fromRGB(color.getRed(), color.getGreen(), color.getBlue()), 0.1f);
+            return new Particle.DustOptions(org.bukkit.Color.fromRGB(color.getRed(),color.getGreen(),color.getBlue()),0.25f);
+            //return new ParticleParamRedstone(color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, 0.1f);
         }
 
         public Location getLocation() {
-            return loc.clone().add(x * 0.02, height * 0.02 - (y * 0.02), 0);
+            return loc.clone().add(x * 0.04, height * 0.04 - (y * 0.04), 0);
         }
     }
 }
